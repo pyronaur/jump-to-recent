@@ -19,6 +19,11 @@
 				"command": "jump-to-recent.quickPick",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "jump-to-recent.quickPickBack",
+				"key": "ctrl+shift+e",
+				"mac": "cmd+shift+e"
 			}
 		],
 		"commands": [

@@ -68,7 +68,7 @@ function handleUserInput(path: string) {
 export function activate(context: vscode.ExtensionContext) {
 
 	let selectedIndex = -1;
-	let disposable = vscode.commands.registerCommand('jump-to-recent.quickPick', function () {
+	const quickPickCommand = vscode.commands.registerCommand('jump-to-recent.quickPick', function () {
 
 		autoloadActiveFiles();
 
@@ -105,8 +105,13 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 
+	const quickPickBackCommand = vscode.commands.registerCommand('jump-to-recent.quickPickBack', function () {
+		selectedIndex = selectedIndex - 2;
+		vscode.commands.executeCommand('jump-to-recent.quickPick');
+	});
 
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(quickPickBackCommand);
+	context.subscriptions.push(quickPickCommand);
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
 		if (!editor) {
 			return;
