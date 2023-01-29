@@ -23,6 +23,24 @@ function pushRecentDocument(document: vscode.TextDocument) {
 		return;
 	}
 
+	// VSCode populates weird paths when settings are opened. 
+	// I don't know how else to check these, 
+	// so I'm just going to hardcode them for now.
+	const ignorePaths = [
+		'/workbench-colors',
+		'/textmate-colors',
+		'/token-styling',
+		'/launch',
+		'/settings',
+		'/settings/resourceLanguage',
+		'.vscode/settings.json',
+		'/settings/folder',
+	];
+
+	if (ignorePaths.some(path => document.fileName.startsWith(path))) {
+		return;
+	}
+
 	let found = recentFiles.find(file => file.path === document.fileName);
 
 	if (found) {
