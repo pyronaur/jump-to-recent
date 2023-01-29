@@ -3,6 +3,10 @@
 	"displayName": "Jump To Recent",
 	"description": "Jump to recent files, just like in IntelliJ editors.",
 	"version": "0.0.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pyronaur/jump-to-recent"
+	},
 	"engines": {
 		"vscode": "^1.74.0"
 	},
