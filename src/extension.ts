@@ -40,7 +40,7 @@ function getAllOpenFiles() {
 }
 
 async function autoloadActiveFiles() {
-	if (loaded) {
+	if (loaded || recentFiles.length > 1) {
 		return;
 	}
 	loaded = true;
