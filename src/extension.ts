@@ -18,6 +18,11 @@ function pushRecentDocument(document: vscode.TextDocument) {
 		return;
 	}
 
+	// Check if file is outside of the workspace
+	if (!vscode.workspace.getWorkspaceFolder(document.uri)) {
+		return;
+	}
+
 	let found = recentFiles.find(file => file.path === document.fileName);
 
 	if (found) {
