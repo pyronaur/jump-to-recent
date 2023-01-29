@@ -2,7 +2,7 @@
 	"name": "jump-to-recent",
 	"displayName": "Jump To Recent",
 	"description": "Jump to recent files, just like in IntelliJ editors.",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pyronaur/jump-to-recent"
