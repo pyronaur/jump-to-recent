@@ -2,7 +2,7 @@
 	"name": "jump-to-recent",
 	"displayName": "Jump To Recent",
 	"description": "Jump to recent files, just like in IntelliJ editors.",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pyronaur/jump-to-recent"
@@ -28,6 +28,12 @@
 				"command": "jump-to-recent.quickPickBack",
 				"key": "ctrl+shift+e",
 				"mac": "cmd+shift+e"
+			},
+			{
+				"command": "jump-to-recent.quickPickDelete",
+				"key": "cmd+backspace",
+				"win": "ctrl+backspace",
+				"when": "inQuickOpen"
 			}
 		],
 		"commands": [

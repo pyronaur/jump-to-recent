@@ -88,53 +88,67 @@ function handleUserInput(path: string) {
 	});
 }
 
+let selectedIndex = -1;
+
+const quickPickCommand = () => {
+	autoloadActiveFiles();
+
+	if (!recentFiles.length) {
+		vscode.window.showInformationMessage('No recent files found.');
+		return;
+	}
+
+	type RecentFileItem = vscode.QuickPickItem & { path: string };
+	const items: RecentFileItem[] = recentFiles
+		.sort((a, b) => b.timestamp - a.timestamp)
+		.map(item => {
+			const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
+			return {
+				label: fileRelativePath,
+				path: item.path,
+			};
+		})
+		.slice(1);
+
+	const quickPick = vscode.window.createQuickPick<RecentFileItem>();
+	quickPick.items = items;
+	quickPick.activeItems = [items[++selectedIndex % items.length]];
+	quickPick.show();
+	quickPick.onDidChangeActive(selected => {
+		selectedIndex = items.findIndex(item => item.path === selected[0].path);
+	});
+	quickPick.onDidAccept(() => {
+		const selected = quickPick.activeItems[0];
+		if (selected) {
+			handleUserInput(selected.path);
+			selectedIndex = -1;
+			quickPick.hide();
+		}
+	});
+};
+
+const quickPickBackCommand = () => {
+	selectedIndex = selectedIndex - 2;
+	quickPickCommand();
+};
+
+const quickPickDeleteCommand = () => {
+	// I have no idea why there's off by one hack here.
+	// It's late, adjusting the index with +1 works for now.
+	const file = recentFiles[selectedIndex + 1];
+	if (file) {
+		recentFiles = recentFiles.filter(f => f.path !== file.path);
+	}
+	selectedIndex = selectedIndex - 2;
+	quickPickCommand();
+};
+
 export function activate(context: vscode.ExtensionContext) {
 
-	let selectedIndex = -1;
-	const quickPickCommand = vscode.commands.registerCommand('jump-to-recent.quickPick', function () {
 
-		autoloadActiveFiles();
-
-		if (!recentFiles.length) {
-			vscode.window.showInformationMessage('No recent files found.');
-			return;
-		}
-
-		type RecentFileItem = vscode.QuickPickItem & { path: string };
-		const items: RecentFileItem[] = recentFiles
-			.sort((a, b) => b.timestamp - a.timestamp)
-			.map(item => {
-				const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
-				return {
-					label: fileRelativePath,
-					path: item.path,
-				};
-			})
-			.slice(1);
-
-		const quickPick = vscode.window.createQuickPick<RecentFileItem>();
-		quickPick.items = items;
-		quickPick.activeItems = [items[++selectedIndex % items.length]];
-		quickPick.show();
-		quickPick.onDidAccept(() => {
-			const selected = quickPick.activeItems[0];
-			if (selected) {
-				handleUserInput(selected.path);
-				selectedIndex = -1;
-				quickPick.hide();
-			}
-		});
-
-	});
-
-
-	const quickPickBackCommand = vscode.commands.registerCommand('jump-to-recent.quickPickBack', function () {
-		selectedIndex = selectedIndex - 2;
-		vscode.commands.executeCommand('jump-to-recent.quickPick');
-	});
-
-	context.subscriptions.push(quickPickBackCommand);
-	context.subscriptions.push(quickPickCommand);
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPick', quickPickCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPickBack', quickPickBackCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPickDelete', quickPickDeleteCommand));
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
 		if (!editor) {
 			return;
