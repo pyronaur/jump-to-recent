@@ -1,28 +1,47 @@
-# README
+# Jump to Recent
 
-Jump to recent files just like in IntelliJ IDEA editors.
+A Visual Studio Code extension to manage your recent files - quickly go to or search recently opened files.
+
+Optimize your file browsing with quick access to recently opened files in Visual Studio Code. Similar to InteliJ, PhpStorm, or WebStorm's "browse recent files" feature, this extension sorts your files by most recently opened, making it easier to switch between recent files. 
 
 ## Features
 
-Bindings:
+- Allows you to quickly switch between recently opened files.
+- Sorts files by most recently opened.
+- Provides quick pick navigation and file deletion options.
 
-```json
+## Installation
+
+1. Open Visual Studio Code.
+2. Click on the Extensions button on the left side of the window.
+3. Search for `Jump To Recent`.
+4. Click the Install button.
+
+## Keybindings
+The following keybindings can be used in Visual Studio Code:
+
+```
 {
-	"key": "ctrl+e",
-	"command": "jump-to-recent.quickPick",
-	"mac": "cmd+e"
+	"key": "cmd+e",
+	"command": "jumpToRecent.open"
 },
 {
-	"key": "ctrl+shift+e",
-	"command": "jump-to-recent.quickPickBack",
-	"mac": "cmd+shift+e"
+	"key": "cmd+shift+e",
+	"command": "jumpToRecent.back"
+}
+{
+	"key": "cmd+backspace",
+	"command": "jumpToRecent.forget"
 }
 ```
 
-## Release Notes
+To use these keybindings in Visual Studio Code, copy the code block above and paste it into your keybindings.json file.
 
-### 0.1.0
+Note that the keybindings will differ depending on whether you are using a Windows or Mac.
 
-Initial release.
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-**Enjoy!**
+## License
+
+This project is licensed under the [MIT License](LICENSE).
