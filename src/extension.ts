@@ -94,7 +94,7 @@ function handleUserInput(path: string) {
 
 let selectedIndex = -1;
 
-const quickPickCommand = () => {
+const openCommand = () => {
 	autoloadActiveFiles();
 
 	if (!recentFiles.length) {
@@ -131,12 +131,12 @@ const quickPickCommand = () => {
 	});
 };
 
-const quickPickBackCommand = () => {
+const backCommand = () => {
 	selectedIndex = selectedIndex - 2;
-	quickPickCommand();
+	openCommand();
 };
 
-const quickPickDeleteCommand = () => {
+const forgetCommand = () => {
 	// I have no idea why there's off by one hack here.
 	// It's late, adjusting the index with +1 works for now.
 	const file = recentFiles[selectedIndex + 1];
@@ -144,15 +144,15 @@ const quickPickDeleteCommand = () => {
 		recentFiles = recentFiles.filter(f => f.path !== file.path);
 	}
 	selectedIndex = selectedIndex - 2;
-	quickPickCommand();
+	openCommand();
 };
 
 export function activate(context: vscode.ExtensionContext) {
 
 
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPick', quickPickCommand));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPickBack', quickPickBackCommand));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.quickPickDelete', quickPickDeleteCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', openCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.back', backCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.forget', forgetCommand));
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
 		if (!editor) {
 			return;
