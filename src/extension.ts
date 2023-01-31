@@ -41,6 +41,10 @@ function pushRecentDocument(document: vscode.TextDocument) {
 		return;
 	}
 
+	if( document.fileName.includes('node_modules/') ) {
+		return;
+	}
+
 	let found = recentFiles.find(file => file.path === document.fileName);
 
 	if (found) {
