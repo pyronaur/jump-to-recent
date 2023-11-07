@@ -1,5 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
 type RecentFile = {
@@ -7,161 +5,121 @@ type RecentFile = {
 	timestamp: number;
 };
 
-let recentFiles: RecentFile[] = [];
+class RecentFilesManager {
+	private recentFiles: RecentFile[] = [];
 
-function pushRecentDocument(document: vscode.TextDocument) {
-	if (!document) {
-		debugger;
-	}
-	// Ignore untitled files and git files
-	if (document.isUntitled || document.fileName.indexOf("git") !== -1) {
-		return;
-	}
-
-	// Check if file is outside of the workspace
-	if (!vscode.workspace.getWorkspaceFolder(document.uri)) {
-		return;
-	}
-
-	// VSCode populates weird paths when settings are opened. 
-	// I don't know how else to check these, 
-	// so I'm just going to hardcode them for now.
-	const ignorePaths = [
-		'/workbench-colors',
-		'/textmate-colors',
-		'/token-styling',
-		'/launch',
-		'/settings',
-		'/settings/resourceLanguage',
-		'.vscode/settings.json',
-		'/settings/folder',
-	];
-
-	if (ignorePaths.some(path => document.fileName.startsWith(path))) {
-		return;
-	}
-
-	if( document.fileName.includes('node_modules/') ) {
-		return;
-	}
-
-	let found = recentFiles.find(file => file.path === document.fileName);
-
-	if (found) {
-		found.timestamp = Date.now();
-		return;
-	}
-	recentFiles.push({
-		path: document.fileName,
-		timestamp: Date.now()
-	});
-}
-let loaded = false;
-
-function getAllOpenFiles() {
-	return vscode.window.tabGroups.all
-		.flatMap(({ tabs }) => tabs.map((tab: vscode.Tab) => {
-			// @ts-ignore - There's a VSCode source code bug - it can't find the input.uri. This is a workaround.
-			return tab.input.uri.path as string;
+	public loadInitialFiles() {
+		// Load initial files if any are open
+		const openFiles = vscode.window.visibleTextEditors.map(editor => editor.document.uri.fsPath);
+		this.recentFiles = openFiles.map(path => ({
+			path,
+			timestamp: Date.now(),
 		}));
-}
-
-async function autoloadActiveFiles() {
-	if (loaded || recentFiles.length > 1) {
-		return;
-	}
-	loaded = true;
-	const docs = getAllOpenFiles();
-	recentFiles = [
-		...recentFiles,
-		...docs.map(path => ({
-			path: path,
-			timestamp: Date.now()
-		}))
-	];
-}
-
-function handleUserInput(path: string) {
-	if (path.trim() === '') {
-		return;
 	}
 
-	const targetDocument = vscode.workspace.openTextDocument(path);
-	targetDocument.then(function (document) {
-		vscode.window.showTextDocument(document);
-	});
+	public push(document: vscode.TextDocument) {
+		if (document.isUntitled || document.uri.scheme === 'git') {
+			return;
+		}
+
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+		if (!workspaceFolder) {
+			return;
+		}
+
+		const ignorePaths = [
+			'/workbench-colors',
+			'/textmate-colors',
+			'/token-styling',
+			'/launch',
+			'/settings',
+			'/settings/resourceLanguage',
+			'.vscode/settings.json',
+			'/settings/folder',
+			'node_modules',
+		];
+
+		if (ignorePaths.some(path => document.uri.path.includes(path))) {
+			console.log("Ignoring file: " + document.uri.path);
+			return;
+		}
+
+		const filePath = document.uri.fsPath;
+		const foundIndex = this.recentFiles.findIndex(file => file.path === filePath);
+
+		if (foundIndex !== -1) {
+			this.recentFiles[foundIndex].timestamp = Date.now();
+		} else {
+			this.recentFiles.push({
+				path: filePath,
+				timestamp: Date.now()
+			});
+		}
+	}
+
+	public getAll() {
+		return this.recentFiles.slice().sort((a, b) => b.timestamp - a.timestamp);
+	}
+
+	public remove(path: string) {
+		this.recentFiles = this.recentFiles.filter(file => file.path !== path);
+	}
+
+	public clear() {
+		this.recentFiles = [];
+	}
 }
 
-let selectedIndex = -1;
+const recentFilesManager = new RecentFilesManager();
 
-const openCommand = () => {
-	autoloadActiveFiles();
+async function openRecentFile() {
+	const recentFiles = recentFilesManager.getAll();
 
-	if (!recentFiles.length) {
+	if (recentFiles.length === 0) {
 		vscode.window.showInformationMessage('No recent files found.');
 		return;
 	}
 
-	type RecentFileItem = vscode.QuickPickItem & { path: string };
-	const items: RecentFileItem[] = recentFiles
-		.sort((a, b) => b.timestamp - a.timestamp)
-		.map(item => {
-			const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
-			return {
-				label: fileRelativePath,
-				path: item.path,
-			};
-		})
-		.slice(1);
-
-	const quickPick = vscode.window.createQuickPick<RecentFileItem>();
-	quickPick.items = items;
-	quickPick.activeItems = [items[++selectedIndex % items.length]];
-	quickPick.show();
-	quickPick.onDidChangeActive(selected => {
-		selectedIndex = items.findIndex(item => item.path === selected[0].path);
+	const items: vscode.QuickPickItem[] = recentFiles.map(item => {
+		const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
+		return {
+			label: fileRelativePath,
+			description: item.path,
+		};
 	});
+
+	const quickPick = vscode.window.createQuickPick();
+	quickPick.items = items;
 	quickPick.onDidAccept(() => {
-		const selected = quickPick.activeItems[0];
-		if (selected) {
-			handleUserInput(selected.path);
-			selectedIndex = -1;
-			quickPick.hide();
+		const selected = quickPick.selectedItems[0];
+		if (selected && selected.description) {
+			vscode.workspace.openTextDocument(selected.description).then(document => {
+				vscode.window.showTextDocument(document).then(() => {
+					quickPick.dispose();
+				}, err => {
+					vscode.window.showErrorMessage(`Cannot open file: ${err}`);
+				});
+			});
 		}
 	});
-};
 
-const backCommand = () => {
-	selectedIndex = selectedIndex - 2;
-	openCommand();
-};
-
-const forgetCommand = () => {
-	// I have no idea why there's off by one hack here.
-	// It's late, adjusting the index with +1 works for now.
-	const file = recentFiles[selectedIndex + 1];
-	if (file) {
-		recentFiles = recentFiles.filter(f => f.path !== file.path);
-	}
-	selectedIndex = selectedIndex - 2;
-	openCommand();
-};
+	quickPick.onDidHide(() => quickPick.dispose());
+	quickPick.show();
+}
 
 export function activate(context: vscode.ExtensionContext) {
-
-
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', openCommand));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.back', backCommand));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.forget', forgetCommand));
+	recentFilesManager.loadInitialFiles();
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', openRecentFile));
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
-		if (!editor) {
-			return;
+		if (editor) {
+			recentFilesManager.push(editor.document);
 		}
-		pushRecentDocument(editor.document);
 	}));
 	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
-		pushRecentDocument(document);
+		recentFilesManager.push(document);
 	}));
 }
 
-export function deactivate() { }
+export function deactivate() {
+	// Clean up any resources if needed
+}
