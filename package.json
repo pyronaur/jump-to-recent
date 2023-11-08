@@ -2,7 +2,7 @@
 	"name": "jump-to-recent",
 	"displayName": "Jump To Recent",
 	"description": "Jump to recent files, just like in IntelliJ editors.",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"publisher": "pyronaur",
 	"icon": "icon.png",
 	"repository": {
@@ -50,11 +50,7 @@
 		"compile": "webpack",
 		"watch": "webpack --watch",
 		"package": "webpack --mode production --devtool hidden-source-map",
-		"compile-tests": "tsc -p . --outDir out",
-		"watch-tests": "tsc -p . -w --outDir out",
-		"pretest": "npm run compile-tests && npm run compile && npm run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
+		"lint": "eslint src --ext ts"
 	},
 	"devDependencies": {
 		"@types/glob": "^8.1.0",
@@ -63,7 +59,6 @@
 		"@types/vscode": "^1.84.0",
 		"@typescript-eslint/eslint-plugin": "^6.10.0",
 		"@typescript-eslint/parser": "^6.10.0",
-		"@vscode/test-electron": "^2.3.6",
 		"eslint": "^8.53.0",
 		"glob": "^10.3.10",
 		"mocha": "^10.2.0",
