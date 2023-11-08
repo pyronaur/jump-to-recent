@@ -20,28 +20,38 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
-		"keybindings": [
-			{
-				"command": "jump-to-recent.open",
-				"key": "ctrl+e",
-				"mac": "cmd+e"
-			},
-			{
-				"command": "jump-to-recent.back",
-				"key": "ctrl+shift+e",
-				"mac": "cmd+shift+e"
-			},
-			{
-				"command": "jump-to-recent.forget",
-				"key": "cmd+backspace",
-				"win": "ctrl+backspace",
-				"when": "inQuickOpen"
-			}
-		],
 		"commands": [
 			{
 				"command": "jump-to-recent.open",
 				"title": "Jump to a recent file"
+			},
+			{
+				"command": "jump-to-recent.navigateNext",
+				"title": "Navigate to Next Recent File"
+			},
+			{
+				"command": "jump-to-recent.navigatePrevious",
+				"title": "Navigate to Previous Recent File"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "jump-to-recent.open",
+				"key": "ctrl+e",
+				"mac": "cmd+e",
+				"when": "!inQuickOpen && !quickPickFocus"
+			},
+			{
+				"command": "jump-to-recent.navigateNext",
+				"key": "cmd+e",
+				"mac": "cmd+e",
+				"when": "inQuickOpen"
+			},
+			{
+				"command": "jump-to-recent.navigatePrevious",
+				"key": "cmd+shift+e",
+				"mac": "cmd+shift+e",
+				"when": "inQuickOpen && quickPickFocus"
 			}
 		]
 	},
