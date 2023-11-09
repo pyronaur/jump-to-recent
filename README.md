@@ -24,14 +24,6 @@ The following keybindings can be used in Visual Studio Code:
 {
 	"key": "cmd+e",
 	"command": "jumpToRecent.open"
-},
-{
-	"key": "cmd+shift+e",
-	"command": "jumpToRecent.back"
-}
-{
-	"key": "cmd+backspace",
-	"command": "jumpToRecent.forget"
 }
 ```
 
