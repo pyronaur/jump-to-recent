@@ -1,3 +1,4 @@
+import path = require('path');
 import * as vscode from 'vscode';
 
 const MAX_RECENT_FILES_DISPLAYED = 10;
@@ -100,8 +101,8 @@ class QuickPickManager {
 			this.quickPick.items = files.map(file => {
 				const fileRelativePath = vscode.workspace.asRelativePath(file.path, false);
 				return {
-					label: fileRelativePath,
-					description: file.path,
+					label: path.basename(fileRelativePath),
+					detail: fileRelativePath,
 				};
 			});
 		}
