@@ -1,5 +1,18 @@
 import * as vscode from 'vscode';
 
+const MAX_RECENT_FILES = 10;
+const IGNORE_PATHS = [
+	'/workbench-colors',
+	'/textmate-colors',
+	'/token-styling',
+	'/launch',
+	'/settings',
+	'/settings/resourceLanguage',
+	'.vscode/settings.json',
+	'/settings/folder',
+	'node_modules',
+];
+
 type RecentFile = {
 	path: string;
 	timestamp: number;
@@ -7,180 +20,130 @@ type RecentFile = {
 
 class RecentFilesManager {
 	private recentFiles: RecentFile[] = [];
-	private activeFilePath: string | null = null;
 
-	public loadInitialFiles() {
-		// Load initial files if any are open
+	public loadInitialFiles(): void {
 		const openFiles = vscode.window.visibleTextEditors.map(editor => editor.document.uri.fsPath);
 		this.recentFiles = openFiles.map(path => ({
 			path,
 			timestamp: Date.now(),
 		}));
-		// Update the active file path
-		const activeEditor = vscode.window.activeTextEditor;
-		this.activeFilePath = activeEditor ? activeEditor.document.uri.fsPath : null;
 	}
 
-	public push(document: vscode.TextDocument) {
-		if (document.isUntitled || document.uri.scheme === 'git') {
+	public push(document: vscode.TextDocument): void {
+		if (document.isUntitled || document.uri.scheme === 'git' || !vscode.workspace.getWorkspaceFolder(document.uri)) {
 			return;
 		}
-
-		const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-		if (!workspaceFolder) {
-			return;
-		}
-
-		const ignorePaths = [
-			'/workbench-colors',
-			'/textmate-colors',
-			'/token-styling',
-			'/launch',
-			'/settings',
-			'/settings/resourceLanguage',
-			'.vscode/settings.json',
-			'/settings/folder',
-			'node_modules',
-		];
-
-		if (ignorePaths.some(path => document.uri.path.includes(path))) {
+		if (IGNORE_PATHS.some(ignorePath => document.uri.path.includes(ignorePath))) {
 			return;
 		}
 
 		const filePath = document.uri.fsPath;
-		const activeEditor = vscode.window.activeTextEditor;
-		const activeFilePath = activeEditor?.document.uri.fsPath;
-		if (activeFilePath === filePath) {
-			this.activeFilePath = filePath;
-			return;
-		}
-
-		const foundIndex = this.recentFiles.findIndex(file => file.path === filePath);
-		if (foundIndex !== -1) {
-			this.recentFiles.splice(foundIndex, 1); // remove the found file
-		}
-
-		// Add to the start of the list
+		this.recentFiles = this.recentFiles.filter(file => file.path !== filePath);
 		this.recentFiles.unshift({
 			path: filePath,
 			timestamp: Date.now()
 		});
+
+		if (this.recentFiles.length > MAX_RECENT_FILES) {
+			this.recentFiles.pop();
+		}
 	}
 
-	public getAll() {
+	public getAll(): RecentFile[] {
+		const activeFilePath = vscode.window.activeTextEditor?.document.uri.fsPath;
 		return this.recentFiles
-			.filter(file => file.path !== this.activeFilePath)
+			.filter(file => file.path !== activeFilePath)
 			.sort((a, b) => b.timestamp - a.timestamp);
 	}
 
-	public remove(path: string) {
-		this.recentFiles = this.recentFiles.filter(file => file.path !== path);
-	}
-
-	public clear() {
+	public clear(): void {
 		this.recentFiles = [];
 	}
 }
 
+class QuickPickManager {
+	private quickPick: vscode.QuickPick<vscode.QuickPickItem> | undefined;
+	private quickPickIndex: number = 0;
+
+	constructor (private recentFilesManager: RecentFilesManager) {
+		this.initQuickPick();
+	}
+
+	private disposeQuickPick(): void {
+		this.quickPick?.dispose();
+		this.quickPick = undefined;
+	}
+
+	private initQuickPick(): void {
+		if( this.quickPick ) {
+			return;
+		}
+		this.quickPickIndex = 0;
+		this.quickPick = vscode.window.createQuickPick();
+		this.quickPick.onDidHide(() => this.disposeQuickPick());
+	}
+
+	public showQuickPick = async () => {
+		this.initQuickPick();
+		if( this.quickPick === undefined ) {
+			vscode.window.showErrorMessage('Failed to initialize quick pick.');
+			return;
+		}
+		const recentFiles = this.recentFilesManager.getAll();
+		if (recentFiles.length === 0) {
+			await vscode.window.showInformationMessage('No recent files found.');
+			return;
+		}
+
+		const items: vscode.QuickPickItem[] = recentFiles.map(item => {
+			const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
+			return {
+				label: fileRelativePath,
+				description: item.path,
+			};
+		});
+
+		this.quickPick.items = items;
+		this.quickPick.onDidAccept(async () => {
+			const selected = this.quickPick?.selectedItems[0];
+			if (selected?.description) {
+				await this.openFile(selected.description);
+			}
+		});
+		this.quickPick.show();
+	}
+
+	private async openFile(filePath: string): Promise<void> {
+		try {
+			const document = await vscode.workspace.openTextDocument(filePath);
+			await vscode.window.showTextDocument(document);
+		} catch (err) {
+			await vscode.window.showErrorMessage(`Cannot open file: ${err}`);
+		} finally {
+			this.disposeQuickPick();
+		}
+	}
+}
+
 const recentFilesManager = new RecentFilesManager();
-let quickPick: vscode.QuickPick<vscode.QuickPickItem> | undefined = undefined;
-let quickPickIndex = 0;
+const quickPickManager = new QuickPickManager(recentFilesManager);
 
-async function openRecentFile() {
-	// If the quick pick is already open, we simply need to refresh it, not create a new one
-	if (quickPick) {
-		quickPick.hide(); // hide the existing quick pick before showing it again
-	}
-
-	const recentFiles = recentFilesManager.getAll();
-
-	if (recentFiles.length === 0) {
-		vscode.window.showInformationMessage('No recent files found.');
-		return;
-	}
-
-	const items: vscode.QuickPickItem[] = recentFiles.map(item => {
-		const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
-		return {
-			label: fileRelativePath,
-			description: item.path,
-		};
-	});
-
-	// Determine the index of the file that was active when the QuickPick was last closed
-	const currentActiveFileIndex = items.findIndex(item => item.description === vscode.window.activeTextEditor?.document.uri.fsPath);
-	quickPickIndex = currentActiveFileIndex >= 0 ? currentActiveFileIndex : 0;
-
-	quickPick = vscode.window.createQuickPick();
-	quickPick.items = items;
-	quickPick.onDidChangeSelection(selection => {
-		if (selection[0]) {
-			quickPickIndex = items.indexOf(selection[0]);
-		}
-	});
-	quickPick.onDidAccept(() => {
-		const selected = quickPick?.selectedItems[0];
-		if (selected && selected.description) {
-			vscode.workspace.openTextDocument(selected.description).then(document => {
-				vscode.window.showTextDocument(document).then(() => {
-					quickPick?.dispose();
-					quickPick = undefined; // Reset the quick pick
-				}, err => {
-					vscode.window.showErrorMessage(`Cannot open file: ${err}`);
-				});
-			});
-		}
-	});
-
-	quickPick.onDidHide(() => {
-		quickPick?.dispose();
-		quickPick = undefined;
-	});
-
-	// If the current active file is in the list, start the QuickPick without that file selected
-	if (currentActiveFileIndex >= 0 && items.length > 1) {
-		quickPick.activeItems = [items[(currentActiveFileIndex + 1) % items.length]];
-	}
-
-	quickPick.show();
-}
-
-function navigateNext() {
-	if (!quickPick) {
-		openRecentFile();
-		return;
-	}
-	quickPickIndex = (quickPickIndex + 1) % quickPick.items.length;
-	quickPick.activeItems = [quickPick.items[quickPickIndex]];
-	quickPick.show();
-}
-
-function navigatePrevious() {
-	if (!quickPick) {
-		openRecentFile();
-		return;
-	}
-	quickPickIndex = (quickPickIndex - 1 + quickPick.items.length) % quickPick.items.length;
-	quickPick.activeItems = [quickPick.items[quickPickIndex]];
-	quickPick.show();
-}
-
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext): void {
 	recentFilesManager.loadInitialFiles();
 
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', openRecentFile));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.navigateNext', navigateNext));
-	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.navigatePrevious', navigatePrevious));
+	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', quickPickManager.showQuickPick));
+
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
 		if (editor) {
 			recentFilesManager.push(editor.document);
 		}
 	}));
+
 	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
 		recentFilesManager.push(document);
 	}));
 }
 
-export function deactivate() {
+export function deactivate(): void {
 	// Clean up any resources if needed
 }

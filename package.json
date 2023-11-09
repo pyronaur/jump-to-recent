@@ -39,19 +39,7 @@
 				"command": "jump-to-recent.open",
 				"key": "ctrl+e",
 				"mac": "cmd+e",
-				"when": "!inQuickOpen && !quickPickFocus"
-			},
-			{
-				"command": "jump-to-recent.navigateNext",
-				"key": "cmd+e",
-				"mac": "cmd+e",
-				"when": "inQuickOpen"
-			},
-			{
-				"command": "jump-to-recent.navigatePrevious",
-				"key": "cmd+shift+e",
-				"mac": "cmd+shift+e",
-				"when": "inQuickOpen && quickPickFocus"
+				"when": "!inQuickOpen"
 			}
 		]
 	},
