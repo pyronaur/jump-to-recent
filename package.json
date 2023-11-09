@@ -10,7 +10,7 @@
 		"url": "https://github.com/pyronaur/jump-to-recent"
 	},
 	"engines": {
-		"vscode": "^1.74.0"
+		"vscode": "^1.84.0"
 	},
 	"categories": [
 		"Other"
