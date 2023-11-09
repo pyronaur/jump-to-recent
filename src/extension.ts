@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-const MAX_RECENT_FILES_DISPLAYED = 10;
-const MAX_ITEMS_IN_MEMORY = 100;
+const MAX_RECENT_FILES_DISPLAYED = 11;
+const MAX_ITEMS_IN_MEMORY = 33;
 const RECENT_FILES_STATE_KEY = 'recentFilesState';
 
 type RecentFile = {
@@ -71,19 +71,11 @@ class QuickPickManager {
 		}
 		this.quickPickIndex = 0;
 		this.quickPick = vscode.window.createQuickPick();
-		this.quickPick.onDidChangeValue(this.onQuickPickValueChanged);
+		this.quickPick.matchOnDescription = true;
+		this.quickPick.matchOnDetail = true;
 		this.quickPick.onDidHide(() => this.disposeQuickPick());
 	}
 
-	private onQuickPickValueChanged = (value: string): void => {
-		if (!value) {
-			this.showQuickPickItems(this.recentFilesManager.getAll().slice(0, MAX_RECENT_FILES_DISPLAYED));
-		} else {
-			const filteredItems = this.recentFilesManager.getAll()
-				.filter(file => file.path.toLowerCase().includes(value.toLowerCase()));
-			this.showQuickPickItems(filteredItems);
-		}
-	};
 
 	private showQuickPickItems = (files: RecentFile[]): void => {
 		if (this.quickPick) {
@@ -93,6 +85,7 @@ class QuickPickManager {
 					label: path.basename(fileRelativePath),
 					detail: fileRelativePath,
 					path: file.path,
+					iconPath: vscode.ThemeIcon.File
 				};
 			});
 		}
