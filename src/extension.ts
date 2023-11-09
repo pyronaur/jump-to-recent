@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-const MAX_RECENT_FILES = 10;
+const MAX_RECENT_FILES_DISPLAYED = 10;
+const MAX_ITEMS_IN_MEMORY = 100;
 const IGNORE_PATHS = [
 	'/workbench-colors',
 	'/textmate-colors',
@@ -44,7 +45,7 @@ class RecentFilesManager {
 			timestamp: Date.now()
 		});
 
-		if (this.recentFiles.length > MAX_RECENT_FILES) {
+		if (this.recentFiles.length > MAX_ITEMS_IN_MEMORY) {
 			this.recentFiles.pop();
 		}
 	}
@@ -75,35 +76,44 @@ class QuickPickManager {
 	}
 
 	private initQuickPick(): void {
-		if( this.quickPick ) {
+		if (this.quickPick) {
 			return;
 		}
 		this.quickPickIndex = 0;
 		this.quickPick = vscode.window.createQuickPick();
+		this.quickPick.onDidChangeValue(this.onQuickPickValueChanged);
 		this.quickPick.onDidHide(() => this.disposeQuickPick());
 	}
 
-	public showQuickPick = async () => {
+	private onQuickPickValueChanged = (value: string): void => {
+		if (!value) {
+			this.showQuickPickItems(this.recentFilesManager.getAll().slice(0, MAX_RECENT_FILES_DISPLAYED));
+		} else {
+			const filteredItems = this.recentFilesManager.getAll()
+				.filter(file => file.path.toLowerCase().includes(value.toLowerCase()));
+			this.showQuickPickItems(filteredItems);
+		}
+	};
+
+	private showQuickPickItems = (files: RecentFile[]): void => {
+		if (this.quickPick) {
+			this.quickPick.items = files.map(file => {
+				const fileRelativePath = vscode.workspace.asRelativePath(file.path, false);
+				return {
+					label: fileRelativePath,
+					description: file.path,
+				};
+			});
+		}
+	};
+
+	public showQuickPick = async (): Promise<void> => {
 		this.initQuickPick();
-		if( this.quickPick === undefined ) {
+		if (!this.quickPick) {
 			vscode.window.showErrorMessage('Failed to initialize quick pick.');
 			return;
 		}
-		const recentFiles = this.recentFilesManager.getAll();
-		if (recentFiles.length === 0) {
-			await vscode.window.showInformationMessage('No recent files found.');
-			return;
-		}
-
-		const items: vscode.QuickPickItem[] = recentFiles.map(item => {
-			const fileRelativePath = vscode.workspace.asRelativePath(item.path, false);
-			return {
-				label: fileRelativePath,
-				description: item.path,
-			};
-		});
-
-		this.quickPick.items = items;
+		this.showQuickPickItems(this.recentFilesManager.getAll().slice(0, MAX_RECENT_FILES_DISPLAYED));
 		this.quickPick.onDidAccept(async () => {
 			const selected = this.quickPick?.selectedItems[0];
 			if (selected?.description) {
@@ -111,7 +121,7 @@ class QuickPickManager {
 			}
 		});
 		this.quickPick.show();
-	}
+	};
 
 	private async openFile(filePath: string): Promise<void> {
 		try {
