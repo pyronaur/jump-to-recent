@@ -1,19 +1,9 @@
-import path = require('path');
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 const MAX_RECENT_FILES_DISPLAYED = 10;
 const MAX_ITEMS_IN_MEMORY = 100;
-const IGNORE_PATHS = [
-	'/workbench-colors',
-	'/textmate-colors',
-	'/token-styling',
-	'/launch',
-	'/settings',
-	'/settings/resourceLanguage',
-	'.vscode/settings.json',
-	'/settings/folder',
-	'node_modules',
-];
+const RECENT_FILES_STATE_KEY = 'recentFilesState';
 
 type RecentFile = {
 	path: string;
@@ -23,12 +13,8 @@ type RecentFile = {
 class RecentFilesManager {
 	private recentFiles: RecentFile[] = [];
 
-	public loadInitialFiles(): void {
-		const openFiles = vscode.window.visibleTextEditors.map(editor => editor.document.uri.fsPath);
-		this.recentFiles = openFiles.map(path => ({
-			path,
-			timestamp: Date.now(),
-		}));
+	constructor (private context: vscode.ExtensionContext) {
+		this.recentFiles = this.context.workspaceState.get<RecentFile[]>(RECENT_FILES_STATE_KEY, []);
 	}
 
 	public push(document: vscode.TextDocument): void {
@@ -49,6 +35,8 @@ class RecentFilesManager {
 		if (this.recentFiles.length > MAX_ITEMS_IN_MEMORY) {
 			this.recentFiles.pop();
 		}
+
+		this.context.workspaceState.update(RECENT_FILES_STATE_KEY, this.recentFiles);
 	}
 
 	public getAll(): RecentFile[] {
@@ -60,11 +48,12 @@ class RecentFilesManager {
 
 	public clear(): void {
 		this.recentFiles = [];
+		this.context.workspaceState.update(RECENT_FILES_STATE_KEY, this.recentFiles);
 	}
 }
 
 class QuickPickManager {
-	private quickPick: vscode.QuickPick<vscode.QuickPickItem> | undefined;
+	private quickPick: vscode.QuickPick<vscode.QuickPickItem & { path: string }> | undefined;
 	private quickPickIndex: number = 0;
 
 	constructor (private recentFilesManager: RecentFilesManager) {
@@ -103,6 +92,7 @@ class QuickPickManager {
 				return {
 					label: path.basename(fileRelativePath),
 					detail: fileRelativePath,
+					path: file.path,
 				};
 			});
 		}
@@ -117,8 +107,8 @@ class QuickPickManager {
 		this.showQuickPickItems(this.recentFilesManager.getAll().slice(0, MAX_RECENT_FILES_DISPLAYED));
 		this.quickPick.onDidAccept(async () => {
 			const selected = this.quickPick?.selectedItems[0];
-			if (selected?.description) {
-				await this.openFile(selected.description);
+			if (selected?.path) {
+				await this.openFile(selected.path);
 			}
 		});
 		this.quickPick.show();
@@ -136,11 +126,21 @@ class QuickPickManager {
 	}
 }
 
-const recentFilesManager = new RecentFilesManager();
-const quickPickManager = new QuickPickManager(recentFilesManager);
+const IGNORE_PATHS = [
+	'/workbench-colors',
+	'/textmate-colors',
+	'/token-styling',
+	'/launch',
+	'/settings',
+	'/settings/resourceLanguage',
+	'.vscode/settings.json',
+	'/settings/folder',
+	'node_modules',
+];
 
 export function activate(context: vscode.ExtensionContext): void {
-	recentFilesManager.loadInitialFiles();
+	const recentFilesManager = new RecentFilesManager(context);
+	const quickPickManager = new QuickPickManager(recentFilesManager);
 
 	context.subscriptions.push(vscode.commands.registerCommand('jump-to-recent.open', quickPickManager.showQuickPick));
 
