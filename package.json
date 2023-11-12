@@ -2,7 +2,7 @@
 	"name": "jump-to-recent",
 	"displayName": "Jump To Recent",
 	"description": "Jump to recent files, just like in IntelliJ editors.",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"publisher": "pyronaur",
 	"icon": "icon.png",
 	"repository": {
@@ -10,7 +10,7 @@
 		"url": "https://github.com/pyronaur/jump-to-recent"
 	},
 	"engines": {
-		"vscode": "^1.84.0"
+		"vscode": "^1.83.0"
 	},
 	"categories": [
 		"Other"
@@ -54,7 +54,7 @@
 		"@types/glob": "^8.1.0",
 		"@types/mocha": "^10.0.3",
 		"@types/node": "20.x",
-		"@types/vscode": "^1.84.0",
+		"@types/vscode": "^1.83.0",
 		"@typescript-eslint/eslint-plugin": "^6.10.0",
 		"@typescript-eslint/parser": "^6.10.0",
 		"eslint": "^8.53.0",
